@@ -46,6 +46,7 @@ import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.ViewManager;
 import com.facebook.react.uimanager.ViewManagerRegistry;
 import com.facebook.react.uimanager.events.EventCategoryDef;
+import com.facebook.systrace.Systrace;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -75,6 +76,17 @@ public class SurfaceMountingManager {
 
   @ThreadConfined(UI)
   private final Set<Integer> mErroneouslyReaddedReactTags = new HashSet<>();
+
+  // This set is used to keep track of views that are currently being interacted with (i.e.
+  // views that saw a ACTION_DOWN but not a ACTION_UP event yet). This is used to prevent
+  // views from being removed while they are being interacted with as their event emitter will
+  // also be removed, and `Pressables` will look "stuck".
+  @ThreadConfined(UI)
+  private final Set<Integer> mViewsWithActiveTouches = new HashSet<>();
+
+  // This set contains the views that are scheduled to be removed after their touch finishes.
+  @ThreadConfined(UI)
+  private final Set<Integer> mViewsToDeleteAfterTouchFinishes = new HashSet<>();
 
   // This is null *until* StopSurface is called.
   private SparseArrayCompat<Object> mTagSetForStoppedSurface;
@@ -220,19 +232,13 @@ public class SurfaceMountingManager {
             ((ReactRoot) rootView).setRootViewTag(mSurfaceId);
           }
 
-          if (!ReactNativeFeatureFlags.forceBatchingMountItemsOnAndroid()) {
-            mRootViewAttached = true;
-          }
-
           executeMountItemsOnViewAttach();
 
-          if (ReactNativeFeatureFlags.forceBatchingMountItemsOnAndroid()) {
-            // By doing this after `executeMountItemsOnViewAttach`, we ensure
-            // that any operations scheduled while processing this queue are
-            // also added to the queue, instead of being processed immediately
-            // through the queue in `MountItemDispatcher`.
-            mRootViewAttached = true;
-          }
+          // By doing this after `executeMountItemsOnViewAttach`, we ensure
+          // that any operations scheduled while processing this queue are
+          // also added to the queue, instead of being processed immediately
+          // through the queue in `MountItemDispatcher`.
+          mRootViewAttached = true;
         };
 
     if (UiThreadUtil.isOnUiThread()) {
@@ -293,6 +299,9 @@ public class SurfaceMountingManager {
 
     Runnable runnable =
         () -> {
+          if (ReactNativeFeatureFlags.enableViewRecycling()) {
+            mViewManagerRegistry.onSurfaceStopped(mSurfaceId);
+          }
           mTagSetForStoppedSurface = new SparseArrayCompat<>();
           for (Map.Entry<Integer, ViewState> entry : mTagToViewState.entrySet()) {
             // Using this as a placeholder value in the map. We're using SparseArrayCompat
@@ -312,9 +321,6 @@ public class SurfaceMountingManager {
           mThemedReactContext = null;
           mOnViewAttachMountItems.clear();
 
-          if (ReactNativeFeatureFlags.enableViewRecycling()) {
-            mViewManagerRegistry.onSurfaceStopped(mSurfaceId);
-          }
           FLog.e(TAG, "Surface [" + mSurfaceId + "] was stopped on SurfaceMountingManager.");
         };
 
@@ -399,7 +405,7 @@ public class SurfaceMountingManager {
 
     try {
       getViewGroupManager(parentViewState).addView(parentView, view, index);
-    } catch (IllegalStateException e) {
+    } catch (IllegalStateException | IndexOutOfBoundsException e) {
       // Wrap error with more context for debugging
       throw new IllegalStateException(
           "addViewAt: failed to insert view ["
@@ -648,25 +654,29 @@ public class SurfaceMountingManager {
       @Nullable StateWrapper stateWrapper,
       @Nullable EventEmitterWrapper eventEmitterWrapper,
       boolean isLayoutable) {
-    View view = null;
-    ViewManager viewManager = null;
+    Systrace.beginSection(
+        Systrace.TRACE_TAG_REACT_JAVA_BRIDGE,
+        "SurfaceMountingManager::createViewUnsafe(" + componentName + ")");
+    try {
+      ReactStylesDiffMap propMap = new ReactStylesDiffMap(props);
 
-    ReactStylesDiffMap propMap = new ReactStylesDiffMap(props);
+      ViewState viewState = new ViewState(reactTag);
+      viewState.mCurrentProps = propMap;
+      viewState.mStateWrapper = stateWrapper;
+      viewState.mEventEmitter = eventEmitterWrapper;
+      mTagToViewState.put(reactTag, viewState);
 
-    if (isLayoutable) {
-      viewManager = mViewManagerRegistry.get(componentName);
-      // View Managers are responsible for dealing with inital state and props.
-      view =
-          viewManager.createView(
-              reactTag, mThemedReactContext, propMap, stateWrapper, mJSResponderHandler);
+      if (isLayoutable) {
+        ViewManager viewManager = mViewManagerRegistry.get(componentName);
+        // View Managers are responsible for dealing with inital state and props.
+        viewState.mView =
+            viewManager.createView(
+                reactTag, mThemedReactContext, propMap, stateWrapper, mJSResponderHandler);
+        viewState.mViewManager = viewManager;
+      }
+    } finally {
+      Systrace.endSection(Systrace.TRACE_TAG_REACT_JAVA_BRIDGE);
     }
-
-    ViewState viewState = new ViewState(reactTag, view, viewManager);
-    viewState.mCurrentProps = propMap;
-    viewState.mStateWrapper = stateWrapper;
-    viewState.mEventEmitter = eventEmitterWrapper;
-
-    mTagToViewState.put(reactTag, viewState);
   }
 
   public void updateProps(int reactTag, ReadableMap props) {
@@ -790,12 +800,10 @@ public class SurfaceMountingManager {
       throw new IllegalStateException("Unable to find View for tag: " + reactTag);
     }
 
-    if (ReactNativeFeatureFlags.setAndroidLayoutDirection()) {
-      viewToUpdate.setLayoutDirection(
-          layoutDirection == 1
-              ? View.LAYOUT_DIRECTION_LTR
-              : layoutDirection == 2 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_INHERIT);
-    }
+    viewToUpdate.setLayoutDirection(
+        layoutDirection == 1
+            ? View.LAYOUT_DIRECTION_LTR
+            : layoutDirection == 2 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_INHERIT);
 
     // Even though we have exact dimensions, we still call measure because some platform views (e.g.
     // Switch) assume that method will always be called before onLayout and onDraw. They use it to
@@ -938,7 +946,7 @@ public class SurfaceMountingManager {
     if (viewState == null) {
       // TODO T62717437 - Use a flag to determine that these event emitters belong to virtual nodes
       // only.
-      viewState = new ViewState(reactTag, null, null);
+      viewState = new ViewState(reactTag);
       mTagToViewState.put(reactTag, viewState);
     }
     EventEmitterWrapper previousEventEmitterWrapper = viewState.mEventEmitter;
@@ -1031,12 +1039,22 @@ public class SurfaceMountingManager {
       return;
     }
 
-    // To delete we simply remove the tag from the registry.
-    // We want to rely on the correct set of MountInstructions being sent to the platform,
-    // or StopSurface being called, so we do not handle deleting descendents of the View.
-    mTagToViewState.remove(reactTag);
+    if (ReactNativeFeatureFlags.enableEventEmitterRetentionDuringGesturesOnAndroid()
+        && mViewsWithActiveTouches.contains(reactTag)) {
+      // If the view that went offscreen is still being touched, we can't delete it yet.
+      // We have to delay the deletion till the touch is completed.
+      // This is causing bugs like those otherwise:
+      // - https://github.com/facebook/react-native/issues/44610
+      // - https://github.com/facebook/react-native/issues/45126
+      mViewsToDeleteAfterTouchFinishes.add(reactTag);
+    } else {
+      // To delete we simply remove the tag from the registry.
+      // We want to rely on the correct set of MountInstructions being sent to the platform,
+      // or StopSurface being called, so we do not handle deleting descendants of the View.
+      mTagToViewState.remove(reactTag);
 
-    onViewStateDeleted(viewState);
+      onViewStateDeleted(viewState);
+    }
   }
 
   @UiThread
@@ -1160,26 +1178,44 @@ public class SurfaceMountingManager {
         });
   }
 
+  public void markActiveTouchForTag(int reactTag) {
+    if (!ReactNativeFeatureFlags.enableEventEmitterRetentionDuringGesturesOnAndroid()) {
+      return;
+    }
+    mViewsWithActiveTouches.add(reactTag);
+  }
+
+  public void sweepActiveTouchForTag(int reactTag) {
+    if (!ReactNativeFeatureFlags.enableEventEmitterRetentionDuringGesturesOnAndroid()) {
+      return;
+    }
+    mViewsWithActiveTouches.remove(reactTag);
+    if (mViewsToDeleteAfterTouchFinishes.contains(reactTag)) {
+      mViewsToDeleteAfterTouchFinishes.remove(reactTag);
+      deleteView(reactTag);
+    }
+  }
+
   /**
    * This class holds view state for react tags. Objects of this class are stored into the {@link
    * #mTagToViewState}, and they should be updated in the same thread.
    */
   private static class ViewState {
-    @Nullable final View mView;
+    @Nullable View mView = null;
     final int mReactTag;
     final boolean mIsRoot;
-    @Nullable final ViewManager mViewManager;
-    @Nullable public ReactStylesDiffMap mCurrentProps = null;
-    @Nullable public ReadableMap mCurrentLocalData = null;
-    @Nullable public StateWrapper mStateWrapper = null;
-    @Nullable public EventEmitterWrapper mEventEmitter = null;
+    @Nullable ViewManager mViewManager = null;
+    @Nullable ReactStylesDiffMap mCurrentProps = null;
+    @Nullable ReadableMap mCurrentLocalData = null;
+    @Nullable StateWrapper mStateWrapper = null;
+    @Nullable EventEmitterWrapper mEventEmitter = null;
 
     @ThreadConfined(UI)
     @Nullable
-    public Queue<PendingViewEvent> mPendingEventQueue = null;
+    Queue<PendingViewEvent> mPendingEventQueue = null;
 
-    private ViewState(int reactTag, @Nullable View view, @Nullable ViewManager viewManager) {
-      this(reactTag, view, viewManager, false);
+    private ViewState(int reactTag) {
+      this(reactTag, null, null, false);
     }
 
     private ViewState(

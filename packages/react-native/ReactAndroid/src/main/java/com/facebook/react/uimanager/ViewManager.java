@@ -14,8 +14,10 @@ import androidx.annotation.Nullable;
 import com.facebook.common.logging.FLog;
 import com.facebook.react.bridge.BaseJavaModule;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.common.annotations.UnstableReactNativeAPI;
 import com.facebook.react.common.mapbuffer.MapBuffer;
 import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags;
 import com.facebook.react.touch.JSResponderHandler;
@@ -61,11 +63,17 @@ public abstract class ViewManager<T extends View, C extends ReactShadowNode>
     }
   }
 
-  private @Nullable Stack<T> getRecyclableViewStack(int surfaceId) {
+  /**
+   * Returns the stack of recycled views for the surface, if enabled
+   *
+   * @param create Whether to create a new stack if not found for the {@code surfaceId}. Should be
+   *     {@code false} if it's possible the surface has been stopped.
+   */
+  private @Nullable Stack<T> getRecyclableViewStack(int surfaceId, boolean create) {
     if (mRecyclableViews == null) {
       return null;
     }
-    if (!mRecyclableViews.containsKey(surfaceId)) {
+    if (create && !mRecyclableViews.containsKey(surfaceId)) {
       mRecyclableViews.put(surfaceId, new Stack<T>());
     }
     return mRecyclableViews.get(surfaceId);
@@ -177,7 +185,7 @@ public abstract class ViewManager<T extends View, C extends ReactShadowNode>
       @Nullable ReactStylesDiffMap initialProps,
       @Nullable StateWrapper stateWrapper) {
     T view = null;
-    @Nullable Stack<T> recyclableViews = getRecyclableViewStack(reactContext.getSurfaceId());
+    @Nullable Stack<T> recyclableViews = getRecyclableViewStack(reactContext.getSurfaceId(), true);
     if (recyclableViews != null && !recyclableViews.empty()) {
       view = recycleView(reactContext, recyclableViews.pop());
     } else {
@@ -224,7 +232,7 @@ public abstract class ViewManager<T extends View, C extends ReactShadowNode>
     // View recycling
     ThemedReactContext themedReactContext = (ThemedReactContext) viewContext;
     int surfaceId = themedReactContext.getSurfaceId();
-    @Nullable Stack<T> recyclableViews = getRecyclableViewStack(surfaceId);
+    @Nullable Stack<T> recyclableViews = getRecyclableViewStack(surfaceId, false);
     if (recyclableViews != null) {
       T recyclableView = prepareToRecycleView(themedReactContext, view);
       if (recyclableView != null) {
@@ -481,5 +489,28 @@ public abstract class ViewManager<T extends View, C extends ReactShadowNode>
     if (mRecyclableViews != null) {
       mRecyclableViews = new HashMap<>();
     }
+  }
+
+  /**
+   * THIS PREFETCH METHOD IS EXPERIMENTAL, DO NOT USE IT FOR PRODUCTION CODE, MOST LIKELY IT WILL
+   * CHANGE OR BE REMOVED IN THE FUTURE.
+   *
+   * <p>Subclasses can override this method to implement custom resource prefetching for the
+   * ViewManager.
+   *
+   * @param reactContext {@link com.facebook.react.bridge.ReactContext} used for the view.
+   * @param surfaceId {@link int} surface ID
+   * @param reactTag reactTag that should be set as ID of the view instance
+   * @param params {@link MapBuffer} prefetch request params defined in C++
+   */
+  @UnstableReactNativeAPI
+  public void experimental_prefetchResource(
+      ReactContext reactContext, int surfaceId, int reactTag, MapBuffer params) {
+    return;
+  }
+
+  @UnstableReactNativeAPI
+  protected boolean experimental_isPrefetchingEnabled() {
+    return ReactNativeFeatureFlags.enableImagePrefetchingAndroid();
   }
 }

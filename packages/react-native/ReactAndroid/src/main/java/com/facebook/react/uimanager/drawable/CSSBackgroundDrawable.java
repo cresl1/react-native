@@ -18,6 +18,7 @@ import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PathEffect;
+import android.graphics.PixelFormat;
 import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
@@ -36,12 +37,15 @@ import com.facebook.react.modules.i18nmanager.I18nUtil;
 import com.facebook.react.uimanager.FloatUtil;
 import com.facebook.react.uimanager.LengthPercentage;
 import com.facebook.react.uimanager.LengthPercentageType;
+import com.facebook.react.uimanager.PixelUtil;
 import com.facebook.react.uimanager.Spacing;
+import com.facebook.react.uimanager.style.BackgroundImageLayer;
 import com.facebook.react.uimanager.style.BorderRadiusProp;
 import com.facebook.react.uimanager.style.BorderRadiusStyle;
 import com.facebook.react.uimanager.style.BorderStyle;
 import com.facebook.react.uimanager.style.ComputedBorderRadius;
-import com.facebook.react.uimanager.style.Gradient;
+import com.facebook.react.uimanager.style.CornerRadii;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -113,7 +117,7 @@ public class CSSBackgroundDrawable extends Drawable {
   /* Used by all types of background and for drawing borders */
   private final Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private int mColor = Color.TRANSPARENT;
-  private @Nullable Gradient[] mGradients = null;
+  private @Nullable List<BackgroundImageLayer> mBackgroundImageLayers = null;
   private int mAlpha = 255;
 
   // There is a small gap between the edges of adjacent paths
@@ -186,7 +190,15 @@ public class CSSBackgroundDrawable extends Drawable {
 
   @Override
   public int getOpacity() {
-    return (Color.alpha(mColor) * mAlpha) >> 8;
+    int alpha = (Color.alpha(mColor) * mAlpha) >> 8;
+    switch (alpha) {
+      case 255:
+        return PixelFormat.OPAQUE;
+      case 0:
+        return PixelFormat.TRANSPARENT;
+      default:
+        return PixelFormat.TRANSLUCENT;
+    }
   }
 
   /* Android's elevation implementation requires this to be implemented to know where to draw the shadow. */
@@ -324,17 +336,13 @@ public class CSSBackgroundDrawable extends Drawable {
     return Math.max(computedRadius - borderWidth, 0);
   }
 
-  public ComputedBorderRadius getComputedBorderRadius() {
-    return mComputedBorderRadius;
-  }
-
   public void setColor(int color) {
     mColor = color;
     invalidateSelf();
   }
 
-  public void setGradients(Gradient[] gradients) {
-    mGradients = gradients;
+  public void setBackgroundImage(@Nullable List<BackgroundImageLayer> backgroundImageLayers) {
+    mBackgroundImageLayers = backgroundImageLayers;
     invalidateSelf();
   }
 
@@ -386,15 +394,15 @@ public class CSSBackgroundDrawable extends Drawable {
     canvas.clipPath(Preconditions.checkNotNull(mOuterClipPathForBorderRadius), Region.Op.INTERSECT);
 
     // Draws the View without its border first (with background color fill)
-    int useColor = ColorUtils.setAlphaComponent(mColor, getOpacity());
+    int useColor = ColorUtils.setAlphaComponent(mColor, (Color.alpha(mColor) * mAlpha) >> 8);
     if (Color.alpha(useColor) != 0) {
       mPaint.setColor(useColor);
       mPaint.setStyle(Paint.Style.FILL);
       canvas.drawPath(Preconditions.checkNotNull(mBackgroundColorRenderPath), mPaint);
     }
 
-    if (mGradients != null && mGradients.length > 0) {
-      mPaint.setShader(getGradientShader());
+    if (mBackgroundImageLayers != null && !mBackgroundImageLayers.isEmpty()) {
+      mPaint.setShader(getBackgroundImageShader());
       mPaint.setStyle(Paint.Style.FILL);
       canvas.drawPath(Preconditions.checkNotNull(mBackgroundColorRenderPath), mPaint);
       mPaint.setShader(null);
@@ -638,17 +646,22 @@ public class CSSBackgroundDrawable extends Drawable {
       colorTop = colorBlockStart;
     }
 
-    // Clip border ONLY if its color is non transparent
+    // Clip border ONLY if at least one edge is non-transparent
+    float pathAdjustment = 0f;
     if (Color.alpha(colorLeft) != 0
-        && Color.alpha(colorTop) != 0
-        && Color.alpha(colorRight) != 0
-        && Color.alpha(colorBottom) != 0
-        && Color.alpha(borderColor) != 0) {
+        || Color.alpha(colorTop) != 0
+        || Color.alpha(colorRight) != 0
+        || Color.alpha(colorBottom) != 0
+        || Color.alpha(borderColor) != 0) {
 
       mInnerClipTempRectForBorderRadius.top += borderWidth.top;
       mInnerClipTempRectForBorderRadius.bottom -= borderWidth.bottom;
       mInnerClipTempRectForBorderRadius.left += borderWidth.left;
       mInnerClipTempRectForBorderRadius.right -= borderWidth.right;
+
+      // only close gap between border and main path if we draw the border, otherwise
+      // we wind up pixelating small pixel-radius curves
+      pathAdjustment = mGapBetweenPaths;
     }
 
     mTempRectForCenterDrawPath.top += borderWidth.top * 0.5f;
@@ -660,23 +673,29 @@ public class CSSBackgroundDrawable extends Drawable {
         mBorderRadius.resolve(
             getLayoutDirection(),
             mContext,
-            mOuterClipTempRectForBorderRadius.width(),
-            mOuterClipTempRectForBorderRadius.height());
-    float topLeftRadius = mComputedBorderRadius.getTopLeft();
-    float topRightRadius = mComputedBorderRadius.getTopRight();
-    float bottomLeftRadius = mComputedBorderRadius.getBottomLeft();
-    float bottomRightRadius = mComputedBorderRadius.getBottomRight();
+            PixelUtil.toDIPFromPixel(mOuterClipTempRectForBorderRadius.width()),
+            PixelUtil.toDIPFromPixel(mOuterClipTempRectForBorderRadius.height()));
+    CornerRadii topLeftRadius = mComputedBorderRadius.getTopLeft().toPixelFromDIP();
+    CornerRadii topRightRadius = mComputedBorderRadius.getTopRight().toPixelFromDIP();
+    CornerRadii bottomLeftRadius = mComputedBorderRadius.getBottomLeft().toPixelFromDIP();
+    CornerRadii bottomRightRadius = mComputedBorderRadius.getBottomRight().toPixelFromDIP();
 
-    final float innerTopLeftRadiusX = getInnerBorderRadius(topLeftRadius, borderWidth.left);
-    final float innerTopLeftRadiusY = getInnerBorderRadius(topLeftRadius, borderWidth.top);
-    final float innerTopRightRadiusX = getInnerBorderRadius(topRightRadius, borderWidth.right);
-    final float innerTopRightRadiusY = getInnerBorderRadius(topRightRadius, borderWidth.top);
+    final float innerTopLeftRadiusX =
+        getInnerBorderRadius(topLeftRadius.getHorizontal(), borderWidth.left);
+    final float innerTopLeftRadiusY =
+        getInnerBorderRadius(topLeftRadius.getVertical(), borderWidth.top);
+    final float innerTopRightRadiusX =
+        getInnerBorderRadius(topRightRadius.getHorizontal(), borderWidth.right);
+    final float innerTopRightRadiusY =
+        getInnerBorderRadius(topRightRadius.getVertical(), borderWidth.top);
     final float innerBottomRightRadiusX =
-        getInnerBorderRadius(bottomRightRadius, borderWidth.right);
+        getInnerBorderRadius(bottomRightRadius.getHorizontal(), borderWidth.right);
     final float innerBottomRightRadiusY =
-        getInnerBorderRadius(bottomRightRadius, borderWidth.bottom);
-    final float innerBottomLeftRadiusX = getInnerBorderRadius(bottomLeftRadius, borderWidth.left);
-    final float innerBottomLeftRadiusY = getInnerBorderRadius(bottomLeftRadius, borderWidth.bottom);
+        getInnerBorderRadius(bottomRightRadius.getVertical(), borderWidth.bottom);
+    final float innerBottomLeftRadiusX =
+        getInnerBorderRadius(bottomLeftRadius.getHorizontal(), borderWidth.left);
+    final float innerBottomLeftRadiusY =
+        getInnerBorderRadius(bottomLeftRadius.getVertical(), borderWidth.bottom);
 
     mInnerClipPathForBorderRadius.addRoundRect(
         mInnerClipTempRectForBorderRadius,
@@ -697,10 +716,10 @@ public class CSSBackgroundDrawable extends Drawable {
     // (mInnerClipTempRectForBorderRadius), ensuring the border can be
     // drawn on top without the gap.
     mBackgroundColorRenderPath.addRoundRect(
-        mInnerClipTempRectForBorderRadius.left - mGapBetweenPaths,
-        mInnerClipTempRectForBorderRadius.top - mGapBetweenPaths,
-        mInnerClipTempRectForBorderRadius.right + mGapBetweenPaths,
-        mInnerClipTempRectForBorderRadius.bottom + mGapBetweenPaths,
+        mInnerClipTempRectForBorderRadius.left - pathAdjustment,
+        mInnerClipTempRectForBorderRadius.top - pathAdjustment,
+        mInnerClipTempRectForBorderRadius.right + pathAdjustment,
+        mInnerClipTempRectForBorderRadius.bottom + pathAdjustment,
         new float[] {
           innerTopLeftRadiusX,
           innerTopLeftRadiusY,
@@ -716,14 +735,14 @@ public class CSSBackgroundDrawable extends Drawable {
     mOuterClipPathForBorderRadius.addRoundRect(
         mOuterClipTempRectForBorderRadius,
         new float[] {
-          topLeftRadius,
-          topLeftRadius,
-          topRightRadius,
-          topRightRadius,
-          bottomRightRadius,
-          bottomRightRadius,
-          bottomLeftRadius,
-          bottomLeftRadius
+          topLeftRadius.getHorizontal(),
+          topLeftRadius.getVertical(),
+          topRightRadius.getHorizontal(),
+          topRightRadius.getVertical(),
+          bottomRightRadius.getHorizontal(),
+          bottomRightRadius.getVertical(),
+          bottomLeftRadius.getHorizontal(),
+          bottomLeftRadius.getVertical()
         },
         Path.Direction.CW);
 
@@ -736,44 +755,28 @@ public class CSSBackgroundDrawable extends Drawable {
     mPathForBorderRadiusOutline.addRoundRect(
         mTempRectForBorderRadiusOutline,
         new float[] {
-          topLeftRadius + extraRadiusForOutline,
-          topLeftRadius + extraRadiusForOutline,
-          topRightRadius + extraRadiusForOutline,
-          topRightRadius + extraRadiusForOutline,
-          bottomRightRadius + extraRadiusForOutline,
-          bottomRightRadius + extraRadiusForOutline,
-          bottomLeftRadius + extraRadiusForOutline,
-          bottomLeftRadius + extraRadiusForOutline
+          topLeftRadius.getHorizontal() + extraRadiusForOutline,
+          topLeftRadius.getVertical() + extraRadiusForOutline,
+          topRightRadius.getHorizontal() + extraRadiusForOutline,
+          topRightRadius.getVertical() + extraRadiusForOutline,
+          bottomRightRadius.getHorizontal() + extraRadiusForOutline,
+          bottomRightRadius.getVertical() + extraRadiusForOutline,
+          bottomLeftRadius.getHorizontal() + extraRadiusForOutline,
+          bottomLeftRadius.getVertical() + extraRadiusForOutline
         },
         Path.Direction.CW);
 
     mCenterDrawPath.addRoundRect(
         mTempRectForCenterDrawPath,
         new float[] {
-          Math.max(
-              topLeftRadius - borderWidth.left * 0.5f,
-              (borderWidth.left > 0.0f) ? (topLeftRadius / borderWidth.left) : 0.0f),
-          Math.max(
-              topLeftRadius - borderWidth.top * 0.5f,
-              (borderWidth.top > 0.0f) ? (topLeftRadius / borderWidth.top) : 0.0f),
-          Math.max(
-              topRightRadius - borderWidth.right * 0.5f,
-              (borderWidth.right > 0.0f) ? (topRightRadius / borderWidth.right) : 0.0f),
-          Math.max(
-              topRightRadius - borderWidth.top * 0.5f,
-              (borderWidth.top > 0.0f) ? (topRightRadius / borderWidth.top) : 0.0f),
-          Math.max(
-              bottomRightRadius - borderWidth.right * 0.5f,
-              (borderWidth.right > 0.0f) ? (bottomRightRadius / borderWidth.right) : 0.0f),
-          Math.max(
-              bottomRightRadius - borderWidth.bottom * 0.5f,
-              (borderWidth.bottom > 0.0f) ? (bottomRightRadius / borderWidth.bottom) : 0.0f),
-          Math.max(
-              bottomLeftRadius - borderWidth.left * 0.5f,
-              (borderWidth.left > 0.0f) ? (bottomLeftRadius / borderWidth.left) : 0.0f),
-          Math.max(
-              bottomLeftRadius - borderWidth.bottom * 0.5f,
-              (borderWidth.bottom > 0.0f) ? (bottomLeftRadius / borderWidth.bottom) : 0.0f)
+          topLeftRadius.getHorizontal() - borderWidth.left * 0.5f,
+          topLeftRadius.getVertical() - borderWidth.top * 0.5f,
+          topRightRadius.getHorizontal() - borderWidth.right * 0.5f,
+          topRightRadius.getVertical() - borderWidth.top * 0.5f,
+          bottomRightRadius.getHorizontal() - borderWidth.right * 0.5f,
+          bottomRightRadius.getVertical() - borderWidth.bottom * 0.5f,
+          bottomLeftRadius.getHorizontal() - borderWidth.left * 0.5f,
+          bottomLeftRadius.getVertical() - borderWidth.bottom * 0.5f,
         },
         Path.Direction.CW);
 
@@ -1127,8 +1130,8 @@ public class CSSBackgroundDrawable extends Drawable {
       canvas.drawRect(getBounds(), mPaint);
     }
 
-    if (mGradients != null && mGradients.length > 0) {
-      mPaint.setShader(getGradientShader());
+    if (mBackgroundImageLayers != null && !mBackgroundImageLayers.isEmpty()) {
+      mPaint.setShader(getBackgroundImageShader());
       canvas.drawRect(getBounds(), mPaint);
       mPaint.setShader(null);
     }
@@ -1424,14 +1427,14 @@ public class CSSBackgroundDrawable extends Drawable {
     return new RectF(borderLeftWidth, borderTopWidth, borderRightWidth, borderBottomWidth);
   }
 
-  private @Nullable Shader getGradientShader() {
-    if (mGradients == null) {
+  private @Nullable Shader getBackgroundImageShader() {
+    if (mBackgroundImageLayers == null) {
       return null;
     }
 
     Shader compositeShader = null;
-    for (Gradient gradient : mGradients) {
-      Shader currentShader = gradient.getShader(getBounds());
+    for (BackgroundImageLayer backgroundImageLayer : mBackgroundImageLayers) {
+      Shader currentShader = backgroundImageLayer.getShader(getBounds());
       if (currentShader == null) {
         continue;
       }

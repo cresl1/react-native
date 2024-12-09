@@ -225,6 +225,29 @@ class RuntimeDecorator : public Base, private jsi::Instrumentation {
     return plain_.utf8(s);
   }
 
+  std::u16string utf16(const String& str) override {
+    return plain_.utf16(str);
+  }
+  std::u16string utf16(const PropNameID& sym) override {
+    return plain_.utf16(sym);
+  }
+
+  void getStringData(
+      const jsi::String& str,
+      void* ctx,
+      void (
+          *cb)(void* ctx, bool ascii, const void* data, size_t num)) override {
+    plain_.getStringData(str, ctx, cb);
+  }
+
+  void getPropNameIdData(
+      const jsi::PropNameID& sym,
+      void* ctx,
+      void (
+          *cb)(void* ctx, bool ascii, const void* data, size_t num)) override {
+    plain_.getPropNameIdData(sym, ctx, cb);
+  }
+
   Object createObject() override {
     return plain_.createObject();
   };
@@ -412,12 +435,16 @@ class RuntimeDecorator : public Base, private jsi::Instrumentation {
     plain().instrumentation().stopHeapSampling(os);
   }
 
-  void createSnapshotToFile(const std::string& path) override {
-    plain().instrumentation().createSnapshotToFile(path);
+  void createSnapshotToFile(
+      const std::string& path,
+      const HeapSnapshotOptions& options) override {
+    plain().instrumentation().createSnapshotToFile(path, options);
   }
 
-  void createSnapshotToStream(std::ostream& os) override {
-    plain().instrumentation().createSnapshotToStream(os);
+  void createSnapshotToStream(
+      std::ostream& os,
+      const HeapSnapshotOptions& options) override {
+    plain().instrumentation().createSnapshotToStream(os, options);
   }
 
   std::string flushAndDisableBridgeTrafficTrace() override {
@@ -668,6 +695,33 @@ class WithRuntimeDecorator : public RuntimeDecorator<Plain, Base> {
   std::string utf8(const String& s) override {
     Around around{with_};
     return RD::utf8(s);
+  }
+
+  std::u16string utf16(const String& str) override {
+    Around around{with_};
+    return RD::utf16(str);
+  }
+  std::u16string utf16(const PropNameID& sym) override {
+    Around around{with_};
+    return RD::utf16(sym);
+  }
+
+  void getStringData(
+      const jsi::String& str,
+      void* ctx,
+      void (
+          *cb)(void* ctx, bool ascii, const void* data, size_t num)) override {
+    Around around{with_};
+    RD::getStringData(str, ctx, cb);
+  }
+
+  void getPropNameIdData(
+      const jsi::PropNameID& sym,
+      void* ctx,
+      void (
+          *cb)(void* ctx, bool ascii, const void* data, size_t num)) override {
+    Around around{with_};
+    RD::getPropNameIdData(sym, ctx, cb);
   }
 
   Value createValueFromJsonUtf8(const uint8_t* json, size_t length) override {

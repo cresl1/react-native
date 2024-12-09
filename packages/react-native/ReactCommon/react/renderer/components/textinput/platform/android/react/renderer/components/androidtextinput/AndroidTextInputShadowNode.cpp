@@ -7,10 +7,7 @@
 
 #include "AndroidTextInputShadowNode.h"
 
-#include <fbjni/fbjni.h>
-#include <react/debug/react_native_assert.h>
 #include <react/featureflags/ReactNativeFeatureFlags.h>
-#include <react/jni/ReadableNativeMap.h>
 #include <react/renderer/attributedstring/AttributedStringBox.h>
 #include <react/renderer/attributedstring/TextAttributes.h>
 #include <react/renderer/components/text/BaseTextShadowNode.h>
@@ -19,37 +16,9 @@
 #include <react/renderer/core/conversions.h>
 #include <react/renderer/textlayoutmanager/TextLayoutContext.h>
 
-#include <utility>
-
-using namespace facebook::jni;
-
 namespace facebook::react {
 
 extern const char AndroidTextInputComponentName[] = "AndroidTextInput";
-
-AndroidTextInputShadowNode::AndroidTextInputShadowNode(
-    const ShadowNode& sourceShadowNode,
-    const ShadowNodeFragment& fragment)
-    : ConcreteViewShadowNode(sourceShadowNode, fragment) {
-  auto& sourceTextInputShadowNode =
-      static_cast<const AndroidTextInputShadowNode&>(sourceShadowNode);
-
-  if (ReactNativeFeatureFlags::enableCleanTextInputYogaNode()) {
-    if (!fragment.children && !fragment.props &&
-        sourceTextInputShadowNode.getIsLayoutClean()) {
-      // This ParagraphShadowNode was cloned but did not change
-      // in a way that affects its layout. Let's mark it clean
-      // to stop Yoga from traversing it.
-      cleanLayout();
-    }
-  }
-}
-
-void AndroidTextInputShadowNode::setContextContainer(
-    ContextContainer* contextContainer) {
-  ensureUnsealed();
-  contextContainer_ = contextContainer;
-}
 
 AttributedString AndroidTextInputShadowNode::getAttributedString() const {
   // Use BaseTextShadowNode to get attributed string from children
@@ -64,6 +33,7 @@ AttributedString AndroidTextInputShadowNode::getAttributedString() const {
   auto attachments = BaseTextShadowNode::Attachments{};
   BaseTextShadowNode::buildAttributedString(
       childTextAttributes, *this, attributedString, attachments);
+  attributedString.setBaseTextAttributes(childTextAttributes);
 
   // BaseTextShadowNode only gets children. We must detect and prepend text
   // value attributes manually.
@@ -78,7 +48,7 @@ AttributedString AndroidTextInputShadowNode::getAttributedString() const {
     // that effect.
     fragment.textAttributes.backgroundColor = clearColor();
     fragment.parentShadowView = ShadowView(*this);
-    attributedString.prependFragment(fragment);
+    attributedString.prependFragment(std::move(fragment));
   }
 
   return attributedString;
@@ -108,7 +78,7 @@ AttributedString AndroidTextInputShadowNode::getPlaceholderAttributedString()
   // appended to the AttributedString (see implementation of appendFragment)
   fragment.textAttributes = textAttributes;
   fragment.parentShadowView = ShadowView(*this);
-  textAttributedString.appendFragment(fragment);
+  textAttributedString.appendFragment(std::move(fragment));
 
   return textAttributedString;
 }
@@ -233,8 +203,11 @@ Float AndroidTextInputShadowNode::baseline(
   auto top = YGNodeLayoutGetBorder(&yogaNode_, YGEdgeTop) +
       YGNodeLayoutGetPadding(&yogaNode_, YGEdgeTop);
 
+  AttributedStringBox attributedStringBox{attributedString};
   return textLayoutManager_->baseline(
-             attributedString, getConcreteProps().paragraphAttributes, size) +
+             attributedStringBox,
+             getConcreteProps().paragraphAttributes,
+             size) +
       top;
 }
 

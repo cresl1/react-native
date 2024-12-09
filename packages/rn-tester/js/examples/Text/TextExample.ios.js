@@ -60,7 +60,9 @@ class TextAlignRTLExample extends React.Component<
     const {isRTL} = this.state;
     const toggleRTL = () => this.setState({isRTL: !isRTL});
     return (
-      <View style={{direction: isRTL ? 'rtl' : 'ltr'}}>
+      <View
+        style={{direction: isRTL ? 'rtl' : 'ltr'}}
+        testID="text-align-example">
         <Text>auto (default) - english LTR</Text>
         <Text>
           {'\u0623\u062D\u0628 \u0627\u0644\u0644\u063A\u0629 ' +
@@ -595,6 +597,68 @@ const examples = [
     },
   },
   {
+    title: 'Background Color and Border Width',
+    name: 'background-border-width',
+    render: function (): React.Node {
+      return (
+        <View testID="background-border-width">
+          <Text
+            style={{
+              backgroundColor: '#F000F0',
+              padding: 10,
+            }}>
+            Text with background color only
+          </Text>
+          <Text
+            style={{
+              backgroundColor: '#F000F0',
+              borderRadius: 10,
+              padding: 10,
+              marginTop: 10,
+            }}>
+            Text with background color and uniform borderRadii
+          </Text>
+          <Text
+            style={{
+              backgroundColor: '#F000F0',
+              borderTopRightRadius: 10,
+              borderTopLeftRadius: 20,
+              borderBottomRightRadius: 20,
+              borderBottomLeftRadius: 10,
+              padding: 10,
+              marginTop: 10,
+            }}>
+            Text with background color and non-uniform borders
+          </Text>
+          <Text
+            style={{
+              borderWidth: 1,
+              borderColor: 'red',
+              borderTopRightRadius: 10,
+              borderTopLeftRadius: 20,
+              borderBottomRightRadius: 20,
+              borderBottomLeftRadius: 10,
+              padding: 10,
+              marginTop: 10,
+            }}>
+            Text with borderWidth
+          </Text>
+          <Text
+            style={{
+              backgroundColor: '#00AA00',
+              borderWidth: 2,
+              borderColor: 'blue',
+              borderRadius: 10,
+              padding: 10,
+              marginTop: 10,
+            }}>
+            Text with background AND borderWidth
+          </Text>
+        </View>
+      );
+    },
+  },
+  {
     title: 'Text metrics',
     render: function (): React.Node {
       return <TextRenderInfoExample />;
@@ -957,7 +1021,7 @@ const examples = [
   },
   {
     title: 'Toggling Attributes',
-    render: function (): React.Element<any> {
+    render: function (): React.MixedElement {
       return <AttributeToggler />;
     },
   },
@@ -1186,12 +1250,13 @@ const examples = [
   },
   {
     title: 'Dynamic Font Size Adjustment',
-    render: function (): React.Element<any> {
+    render: function (): React.MixedElement {
       return <AdjustingFontSize />;
     },
   },
   {
     title: 'Text Align with RTL',
+    name: 'textAlign',
     render: function (): React.Node {
       return <TextAlignRTLExample />;
     },
@@ -1376,7 +1441,7 @@ const examples = [
             testID="text-box-shadow"
             style={{
               borderRadius: 10,
-              experimental_boxShadow: '0 0 10px red',
+              boxShadow: '0 0 10px red',
             }}>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
             eiusmod tempor incididunt ut labore et dolore magna aliqua.

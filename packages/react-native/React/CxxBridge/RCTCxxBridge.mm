@@ -162,11 +162,13 @@ static void mapReactMarkerToPerformanceLogger(
 
 static void registerPerformanceLoggerHooks(RCTPerformanceLogger *performanceLogger)
 {
+  std::unique_lock lock(ReactMarker::logTaggedMarkerImplMutex);
   __weak RCTPerformanceLogger *weakPerformanceLogger = performanceLogger;
-  ReactMarker::logTaggedMarkerImpl = [weakPerformanceLogger](
-                                         const ReactMarker::ReactMarkerId markerId, const char *tag) {
+  ReactMarker::LogTaggedMarker newMarker = [weakPerformanceLogger](
+                                               const ReactMarker::ReactMarkerId markerId, const char *tag) {
     mapReactMarkerToPerformanceLogger(markerId, weakPerformanceLogger, tag);
   };
+  ReactMarker::logTaggedMarkerImpl = newMarker;
 }
 
 @interface RCTCxxBridge () <RCTModuleDataCallInvokerProvider>
@@ -175,7 +177,6 @@ static void registerPerformanceLoggerHooks(RCTPerformanceLogger *performanceLogg
 @property (nonatomic, assign, readonly) BOOL moduleSetupComplete;
 
 - (instancetype)initWithParentBridge:(RCTBridge *)bridge;
-- (void)partialBatchDidFlush;
 - (void)batchDidComplete;
 
 @end
@@ -185,8 +186,6 @@ struct RCTInstanceCallback : public InstanceCallback {
   RCTInstanceCallback(RCTCxxBridge *bridge) : bridge_(bridge){};
   void onBatchComplete() override
   {
-    // There's no interface to call this per partial batch
-    [bridge_ partialBatchDidFlush];
     [bridge_ batchDidComplete];
   }
 };
@@ -372,7 +371,8 @@ struct RCTInstanceCallback : public InstanceCallback {
   // in case if some other tread resets it.
   auto reactInstance = _reactInstance;
   if (reactInstance) {
-    int unloadLevel = RCTGetMemoryPressureUnloadLevel();
+    // Memory Pressure Unloading Level 15 represents TRIM_MEMORY_RUNNING_CRITICAL.
+    int unloadLevel = 15;
     reactInstance->handleMemoryPressure(unloadLevel);
   }
 }
@@ -1514,30 +1514,29 @@ RCT_NOT_IMPLEMENTED(-(instancetype)initWithBundleURL
 
 #pragma mark - Payload Processing
 
-- (void)partialBatchDidFlush
-{
-  for (RCTModuleData *moduleData in _moduleDataByID) {
-    if (moduleData.implementsPartialBatchDidFlush) {
-      [self
-          dispatchBlock:^{
-            [moduleData.instance partialBatchDidFlush];
-          }
-                  queue:moduleData.methodQueue];
-    }
-  }
-}
-
 - (void)batchDidComplete
 {
-  // TODO #12592471: batchDidComplete is only used by RCTUIManager,
-  // can we eliminate this special case?
-  for (RCTModuleData *moduleData in _moduleDataByID) {
-    if (moduleData.implementsBatchDidComplete) {
+  if (RCTBridgeModuleBatchDidCompleteDisabled()) {
+    id uiManager = [self moduleForName:@"UIManager"];
+    if ([uiManager respondsToSelector:@selector(batchDidComplete)] &&
+        [uiManager respondsToSelector:@selector(methodQueue)]) {
       [self
           dispatchBlock:^{
-            [moduleData.instance batchDidComplete];
+            [uiManager batchDidComplete];
           }
-                  queue:moduleData.methodQueue];
+                  queue:[uiManager methodQueue]];
+    }
+  } else {
+    // TODO #12592471: batchDidComplete is only used by RCTUIManager,
+    // can we eliminate this special case?
+    for (RCTModuleData *moduleData in _moduleDataByID) {
+      if (moduleData.implementsBatchDidComplete) {
+        [self
+            dispatchBlock:^{
+              [moduleData.instance batchDidComplete];
+            }
+                    queue:moduleData.methodQueue];
+      }
     }
   }
 }

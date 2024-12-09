@@ -7,9 +7,11 @@
 
 #pragma once
 
-#include <functional>
-#include <vector>
 #include "folly/dynamic.h"
+
+#include <functional>
+#include <optional>
+#include <vector>
 
 namespace facebook::react {
 
@@ -33,11 +35,12 @@ class FuseboxTracer {
   // are expected in that scenario.
   bool stopTracing(const std::function<void(const folly::dynamic& eventsChunk)>&
                        resultCallback);
+  bool stopTracingAndWriteToFile(const std::string& path);
   void addEvent(
-      const std::string& name,
+      const std::string_view& name,
       uint64_t start,
       uint64_t end,
-      const std::string& track);
+      const std::optional<std::string_view>& track);
 
   static FuseboxTracer& getFuseboxTracer();
 

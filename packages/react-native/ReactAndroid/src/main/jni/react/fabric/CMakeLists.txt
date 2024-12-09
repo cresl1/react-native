@@ -5,15 +5,19 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+include(${REACT_ANDROID_DIR}/src/main/jni/first-party/jni-lib-merge/SoMerging-utils.cmake)
+
 file(GLOB fabricjni_SRCS CONFIGURE_DEPENDS *.cpp)
 
 add_library(
         fabricjni
-        SHARED
+        OBJECT
         ${fabricjni_SRCS}
 )
 
 target_include_directories(fabricjni PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_merge_so(fabricjni)
 
 target_link_libraries(
         fabricjni
@@ -51,6 +55,7 @@ target_link_libraries(
         rrc_modal
         rrc_progressbar
         rrc_root
+        rrc_safeareaview
         rrc_scrollview
         rrc_switch
         rrc_text

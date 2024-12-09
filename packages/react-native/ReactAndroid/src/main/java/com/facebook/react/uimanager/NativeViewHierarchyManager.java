@@ -27,7 +27,6 @@ import com.facebook.react.bridge.RetryableMountingLayerException;
 import com.facebook.react.bridge.SoftAssertions;
 import com.facebook.react.bridge.UiThreadUtil;
 import com.facebook.react.common.build.ReactBuildConfig;
-import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags;
 import com.facebook.react.touch.JSResponderHandler;
 import com.facebook.react.uimanager.layoutanimation.LayoutAnimationController;
 import com.facebook.react.uimanager.layoutanimation.LayoutAnimationListener;
@@ -79,7 +78,7 @@ public class NativeViewHierarchyManager {
   private final LayoutAnimationController mLayoutAnimator = new LayoutAnimationController();
   private final RectF mBoundingBox = new RectF();
 
-  private boolean mLayoutAnimationEnabled;
+  private volatile boolean mLayoutAnimationEnabled;
   private HashMap<Integer, Set<Integer>> mPendingDeletionsForTag;
 
   public NativeViewHierarchyManager(ViewManagerRegistry viewManagers) {
@@ -178,9 +177,7 @@ public class NativeViewHierarchyManager {
     try {
       View viewToUpdate = resolveView(tag);
 
-      if (ReactNativeFeatureFlags.setAndroidLayoutDirection()) {
-        viewToUpdate.setLayoutDirection(LayoutDirectionUtil.toAndroidFromYoga(layoutDirection));
-      }
+      viewToUpdate.setLayoutDirection(LayoutDirectionUtil.toAndroidFromYoga(layoutDirection));
 
       // Even though we have exact dimensions, we still call measure because some platform views
       // (e.g.
@@ -246,7 +243,7 @@ public class NativeViewHierarchyManager {
   }
 
   @Nullable
-  public long getInstanceHandle(int reactTag) {
+  public synchronized long getInstanceHandle(int reactTag) {
     View view = mTagsToViews.get(reactTag);
     if (view == null) {
       throw new IllegalViewOperationException("Unable to find view for tag: " + reactTag);
@@ -674,6 +671,9 @@ public class NativeViewHierarchyManager {
     View rootView = mTagsToViews.get(rootViewTag);
     dropView(rootView);
     mRootTags.delete(rootViewTag);
+    if (rootView != null) {
+      rootView.setId(View.NO_ID);
+    }
   }
 
   /**
@@ -814,15 +814,16 @@ public class NativeViewHierarchyManager {
     mJSResponderHandler.setJSResponder(initialReactTag, view.getParent());
   }
 
-  public void clearJSResponder() {
+  public synchronized void clearJSResponder() {
     mJSResponderHandler.clearJSResponder();
   }
 
-  void configureLayoutAnimation(final ReadableMap config, final Callback onAnimationComplete) {
+  synchronized void configureLayoutAnimation(
+      final ReadableMap config, final Callback onAnimationComplete) {
     mLayoutAnimator.initializeFromConfig(config, onAnimationComplete);
   }
 
-  void clearLayoutAnimation() {
+  synchronized void clearLayoutAnimation() {
     mLayoutAnimator.reset();
   }
 
@@ -885,7 +886,7 @@ public class NativeViewHierarchyManager {
     return (ThemedReactContext) view.getContext();
   }
 
-  public void sendAccessibilityEvent(int tag, int eventType) {
+  public synchronized void sendAccessibilityEvent(int tag, int eventType) {
     View view = mTagsToViews.get(tag);
     if (view == null) {
       throw new RetryableMountingLayerException("Could not find view with tag " + tag);

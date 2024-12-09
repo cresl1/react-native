@@ -58,6 +58,7 @@ const Content& ParagraphShadowNode::getContent(
   auto attributedString = AttributedString{};
   auto attachments = Attachments{};
   buildAttributedString(textAttributes, *this, attributedString, attachments);
+  attributedString.setBaseTextAttributes(textAttributes);
 
   content_ = Content{
       attributedString, getConcreteProps().paragraphAttributes, attachments};
@@ -184,8 +185,9 @@ Float ParagraphShadowNode::baseline(
     attributedString.appendFragment({string, textAttributes, {}});
   }
 
+  AttributedStringBox attributedStringBox{attributedString};
   return textLayoutManager_->baseline(
-      attributedString, getConcreteProps().paragraphAttributes, size);
+      attributedStringBox, getConcreteProps().paragraphAttributes, size);
 }
 
 void ParagraphShadowNode::layout(LayoutContext layoutContext) {
@@ -205,9 +207,11 @@ void ParagraphShadowNode::layout(LayoutContext layoutContext) {
   textLayoutContext.pointScaleFactor = layoutContext.pointScaleFactor;
   auto measurement = TextMeasurement{};
 
+  AttributedStringBox attributedStringBox{content.attributedString};
+
   if (getConcreteProps().onTextLayout) {
     auto linesMeasurements = textLayoutManager_->measureLines(
-        content.attributedString, content.paragraphAttributes, size);
+        attributedStringBox, content.paragraphAttributes, size);
     getConcreteEventEmitter().onTextLayout(linesMeasurements);
   }
 
@@ -218,7 +222,7 @@ void ParagraphShadowNode::layout(LayoutContext layoutContext) {
 
   // Only measure if attachments are not empty.
   measurement = textLayoutManager_->measure(
-      AttributedStringBox{content.attributedString},
+      attributedStringBox,
       content.paragraphAttributes,
       textLayoutContext,
       layoutConstraints);

@@ -129,10 +129,10 @@ runs:
       shell: bash
       if: ${{ inputs.run-e2e-tests == 'true' }}
       run: |
-        xcrun xcodebuild \
+        xcodebuild \
           -scheme "RNTester" \
           -workspace packages/rn-tester/RNTesterPods.xcworkspace \
-          -configuration "Release" \
+          -configuration "${{ inputs.flavor }}" \
           -sdk "iphonesimulator" \
           -destination "generic/platform=iOS Simulator" \
           -derivedDataPath "/tmp/RNTesterBuild"

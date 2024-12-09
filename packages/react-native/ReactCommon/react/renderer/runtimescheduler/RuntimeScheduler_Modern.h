@@ -23,7 +23,8 @@ class RuntimeScheduler_Modern final : public RuntimeSchedulerBase {
  public:
   explicit RuntimeScheduler_Modern(
       RuntimeExecutor runtimeExecutor,
-      std::function<RuntimeSchedulerTimePoint()> now);
+      std::function<RuntimeSchedulerTimePoint()> now,
+      RuntimeSchedulerTaskErrorHandler onTaskError);
 
   /*
    * Not copyable.
@@ -138,6 +139,7 @@ class RuntimeScheduler_Modern final : public RuntimeSchedulerBase {
    * immediately.
    */
   void scheduleRenderingUpdate(
+      SurfaceId surfaceId,
       RuntimeSchedulerRenderingUpdate&& renderingUpdate) override;
 
   void setShadowTreeRevisionConsistencyManager(
@@ -146,6 +148,9 @@ class RuntimeScheduler_Modern final : public RuntimeSchedulerBase {
 
   void setPerformanceEntryReporter(
       PerformanceEntryReporter* performanceEntryReporter) override;
+
+  void setEventTimingDelegate(
+      RuntimeSchedulerEventTimingDelegate* eventTimingDelegate) override;
 
  private:
   std::atomic<uint_fast8_t> syncTaskRequests_{0};
@@ -218,10 +223,15 @@ class RuntimeScheduler_Modern final : public RuntimeSchedulerBase {
   bool isEventLoopScheduled_{false};
 
   std::queue<RuntimeSchedulerRenderingUpdate> pendingRenderingUpdates_;
+  std::unordered_set<SurfaceId> surfaceIdsWithPendingRenderingUpdates_;
+
   ShadowTreeRevisionConsistencyManager* shadowTreeRevisionConsistencyManager_{
       nullptr};
 
   PerformanceEntryReporter* performanceEntryReporter_{nullptr};
+  RuntimeSchedulerEventTimingDelegate* eventTimingDelegate_{nullptr};
+
+  RuntimeSchedulerTaskErrorHandler onTaskError_;
 };
 
 } // namespace facebook::react

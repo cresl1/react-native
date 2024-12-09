@@ -115,6 +115,13 @@ describe('processFilter', () => {
       processFilter('brightness(0.5) opacity(0.5) blur(5) hue-rotate(90deg)'),
     ).toEqual([{brightness: 0.5}, {opacity: 0.5}, {blur: 5}, {hueRotate: 90}]);
   });
+  it('string multiple filters with newlines', () => {
+    expect(
+      processFilter(
+        'brightness(0.5)\n   opacity(0.5)\n   blur(5)\n   hue-rotate(90deg)',
+      ),
+    ).toEqual([{brightness: 0.5}, {opacity: 0.5}, {blur: 5}, {hueRotate: 90}]);
+  });
   it('string multiple filters one invalid', () => {
     expect(
       processFilter('brightness(0.5) opacity(0.5) blur(5) hue-rotate(90foo)'),
@@ -315,6 +322,18 @@ function testDropShadow() {
           offsetX: 50,
           offsetY: 50,
           color: processColor('purple'),
+        },
+      },
+    ]);
+  });
+
+  it('should parse string drop-shadow with rgba color', () => {
+    expect(processFilter('drop-shadow(50 50 rgba(0, 0, 0, 1))')).toEqual([
+      {
+        dropShadow: {
+          offsetX: 50,
+          offsetY: 50,
+          color: processColor('rgba(0, 0, 0, 1)'),
         },
       },
     ]);

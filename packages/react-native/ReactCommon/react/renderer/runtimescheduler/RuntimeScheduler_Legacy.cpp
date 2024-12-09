@@ -8,7 +8,6 @@
 #include "RuntimeScheduler_Legacy.h"
 #include "SchedulerPriorityUtils.h"
 
-#include <cxxreact/ErrorUtils.h>
 #include <cxxreact/SystraceSection.h>
 #include <react/renderer/consistency/ScopedShadowTreeRevisionLock.h>
 #include <utility>
@@ -19,8 +18,11 @@ namespace facebook::react {
 
 RuntimeScheduler_Legacy::RuntimeScheduler_Legacy(
     RuntimeExecutor runtimeExecutor,
-    std::function<RuntimeSchedulerTimePoint()> now)
-    : runtimeExecutor_(std::move(runtimeExecutor)), now_(std::move(now)) {}
+    std::function<RuntimeSchedulerTimePoint()> now,
+    RuntimeSchedulerTaskErrorHandler onTaskError)
+    : runtimeExecutor_(std::move(runtimeExecutor)),
+      now_(std::move(now)),
+      onTaskError_(std::move(onTaskError)) {}
 
 void RuntimeScheduler_Legacy::scheduleWork(RawCallback&& callback) noexcept {
   SystraceSection s("RuntimeScheduler::scheduleWork");
@@ -167,13 +169,17 @@ void RuntimeScheduler_Legacy::callExpiredTasks(jsi::Runtime& runtime) {
       executeTask(runtime, topPriorityTask, didUserCallbackTimeout);
     }
   } catch (jsi::JSError& error) {
-    handleJSError(runtime, error, true);
+    onTaskError_(runtime, error);
+  } catch (std::exception& ex) {
+    jsi::JSError error(runtime, std::string("Non-js exception: ") + ex.what());
+    onTaskError_(runtime, error);
   }
 
   currentPriority_ = previousPriority;
 }
 
 void RuntimeScheduler_Legacy::scheduleRenderingUpdate(
+    SurfaceId /*surfaceId*/,
     RuntimeSchedulerRenderingUpdate&& renderingUpdate) {
   SystraceSection s("RuntimeScheduler::scheduleRenderingUpdate");
 
@@ -190,6 +196,11 @@ void RuntimeScheduler_Legacy::setShadowTreeRevisionConsistencyManager(
 
 void RuntimeScheduler_Legacy::setPerformanceEntryReporter(
     PerformanceEntryReporter* /*performanceEntryReporter*/) {
+  // No-op in the legacy scheduler
+}
+
+void RuntimeScheduler_Legacy::setEventTimingDelegate(
+    RuntimeSchedulerEventTimingDelegate* /*eventTimingDelegate*/) {
   // No-op in the legacy scheduler
 }
 
@@ -224,7 +235,10 @@ void RuntimeScheduler_Legacy::startWorkLoop(jsi::Runtime& runtime) {
       executeTask(runtime, topPriorityTask, didUserCallbackTimeout);
     }
   } catch (jsi::JSError& error) {
-    handleJSError(runtime, error, true);
+    onTaskError_(runtime, error);
+  } catch (std::exception& ex) {
+    jsi::JSError error(runtime, std::string("Non-js exception: ") + ex.what());
+    onTaskError_(runtime, error);
   }
 
   currentPriority_ = previousPriority;

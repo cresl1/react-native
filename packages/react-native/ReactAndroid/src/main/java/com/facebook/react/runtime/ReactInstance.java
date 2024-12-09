@@ -40,10 +40,9 @@ import com.facebook.react.bridge.queue.ReactQueueConfigurationImpl;
 import com.facebook.react.bridge.queue.ReactQueueConfigurationSpec;
 import com.facebook.react.devsupport.StackTraceHelper;
 import com.facebook.react.devsupport.interfaces.DevSupportManager;
-import com.facebook.react.fabric.Binding;
-import com.facebook.react.fabric.BindingImpl;
 import com.facebook.react.fabric.ComponentFactory;
 import com.facebook.react.fabric.FabricUIManager;
+import com.facebook.react.fabric.FabricUIManagerBinding;
 import com.facebook.react.fabric.events.EventBeatManager;
 import com.facebook.react.interfaces.exceptionmanager.ReactJsExceptionHandler;
 import com.facebook.react.internal.AndroidChoreographerProvider;
@@ -131,9 +130,7 @@ final class ReactInstance {
         mQueueConfiguration.getNativeModulesQueueThread();
 
     ReactChoreographer.initialize(AndroidChoreographerProvider.getInstance());
-    if (useDevSupport) {
-      devSupportManager.startInspector();
-    }
+    devSupportManager.startInspector();
 
     JSTimerExecutor jsTimerExecutor = createJSTimerExecutor();
     mJavaTimerManager =
@@ -156,7 +153,7 @@ final class ReactInstance {
             nativeModulesMessageQueueThread,
             mJavaTimerManager,
             jsTimerExecutor,
-            new ReactJsExceptionHandlerImpl(nativeModulesMessageQueueThread),
+            new ReactJsExceptionHandlerImpl(exceptionHandler),
             bindingsInstaller,
             isProfiling,
             reactHostInspectorTarget);
@@ -272,7 +269,7 @@ final class ReactInstance {
     // Misc initialization that needs to be done before Fabric init
     DisplayMetricsHolder.initDisplayMetricsIfNotInitialized(mBridgelessReactContext);
 
-    Binding binding = new BindingImpl();
+    FabricUIManagerBinding binding = new FabricUIManagerBinding();
     binding.register(
         getBufferedRuntimeExecutor(),
         getRuntimeScheduler(),
@@ -318,25 +315,28 @@ final class ReactInstance {
   }
 
   private class ReactJsExceptionHandlerImpl implements ReactJsExceptionHandler {
-    private final MessageQueueThread mMessageQueueThread;
+    private final QueueThreadExceptionHandler mQueueThreadExceptionHandler;
 
-    ReactJsExceptionHandlerImpl(MessageQueueThread nativeModulesMessageQueueThread) {
-      mMessageQueueThread = nativeModulesMessageQueueThread;
+    ReactJsExceptionHandlerImpl(QueueThreadExceptionHandler queueThreadExceptionHandler) {
+      mQueueThreadExceptionHandler = queueThreadExceptionHandler;
     }
 
     @Override
     public void reportJsException(ParsedError error) {
       JavaOnlyMap data = StackTraceHelper.convertParsedError(error);
 
-      // Simulate async native module method call
-      mMessageQueueThread.runOnQueue(
-          () -> {
-            NativeExceptionsManagerSpec exceptionsManager =
-                (NativeExceptionsManagerSpec)
-                    Assertions.assertNotNull(
-                        mTurboModuleManager.getModule(NativeExceptionsManagerSpec.NAME));
-            exceptionsManager.reportException(data);
-          });
+      try {
+        NativeExceptionsManagerSpec exceptionsManager =
+            (NativeExceptionsManagerSpec)
+                Assertions.assertNotNull(
+                    mTurboModuleManager.getModule(NativeExceptionsManagerSpec.NAME));
+        exceptionsManager.reportException(data);
+      } catch (Exception e) {
+        // Sometimes (e.g: always with the default exception manager) the native module exceptions
+        // manager can throw. In those cases, call into the lower-level queue thread exceptions
+        // handler.
+        mQueueThreadExceptionHandler.handleException(e);
+      }
     }
   }
 

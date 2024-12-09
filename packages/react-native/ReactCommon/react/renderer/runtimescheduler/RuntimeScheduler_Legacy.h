@@ -22,7 +22,8 @@ class RuntimeScheduler_Legacy final : public RuntimeSchedulerBase {
  public:
   explicit RuntimeScheduler_Legacy(
       RuntimeExecutor runtimeExecutor,
-      std::function<RuntimeSchedulerTimePoint()> now);
+      std::function<RuntimeSchedulerTimePoint()> now,
+      RuntimeSchedulerTaskErrorHandler onTaskError);
 
   /*
    * Not copyable.
@@ -121,6 +122,7 @@ class RuntimeScheduler_Legacy final : public RuntimeSchedulerBase {
   void callExpiredTasks(jsi::Runtime& runtime) override;
 
   void scheduleRenderingUpdate(
+      SurfaceId surfaceId,
       RuntimeSchedulerRenderingUpdate&& renderingUpdate) override;
 
   void setShadowTreeRevisionConsistencyManager(
@@ -129,6 +131,9 @@ class RuntimeScheduler_Legacy final : public RuntimeSchedulerBase {
 
   void setPerformanceEntryReporter(
       PerformanceEntryReporter* performanceEntryReporter) override;
+
+  void setEventTimingDelegate(
+      RuntimeSchedulerEventTimingDelegate* eventTimingDelegate) override;
 
  private:
   std::priority_queue<
@@ -179,6 +184,8 @@ class RuntimeScheduler_Legacy final : public RuntimeSchedulerBase {
 
   ShadowTreeRevisionConsistencyManager* shadowTreeRevisionConsistencyManager_{
       nullptr};
+
+  RuntimeSchedulerTaskErrorHandler onTaskError_;
 };
 
 } // namespace facebook::react

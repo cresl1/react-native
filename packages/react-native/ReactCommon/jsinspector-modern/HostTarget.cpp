@@ -8,11 +8,12 @@
 #include "HostTarget.h"
 #include "CdpJson.h"
 #include "HostAgent.h"
-#include "HostTargetSessionObserver.h"
 #include "InspectorInterfaces.h"
 #include "InspectorUtilities.h"
 #include "InstanceTarget.h"
 #include "SessionState.h"
+
+#include <jsinspector-modern/InspectorFlags.h>
 
 #include <folly/dynamic.h>
 #include <folly/json.h>
@@ -44,13 +45,7 @@ class HostTargetSession {
             targetController,
             std::move(hostMetadata),
             state_,
-            executor) {
-    HostTargetSessionObserver::getInstance().onHostTargetSessionCreated();
-  }
-
-  ~HostTargetSession() {
-    HostTargetSessionObserver::getInstance().onHostTargetSessionDestroyed();
-  }
+            executor) {}
 
   /**
    * Called by CallbackLocalConnection to send a message to this Session's
@@ -239,7 +234,22 @@ bool HostTargetController::decrementPauseOverlayCounter() {
   return true;
 }
 
-folly::dynamic hostMetadataToDynamic(const HostTargetMetadata& metadata) {
+namespace {
+
+struct StaticHostTargetMetadata {
+  std::optional<bool> isProfilingBuild;
+};
+
+StaticHostTargetMetadata getStaticHostMetadata() {
+  auto& inspectorFlags = jsinspector_modern::InspectorFlags::getInstance();
+
+  return {.isProfilingBuild = inspectorFlags.getIsProfilingBuild()};
+}
+
+} // namespace
+
+folly::dynamic createHostMetadataPayload(const HostTargetMetadata& metadata) {
+  auto staticMetadata = getStaticHostMetadata();
   folly::dynamic result = folly::dynamic::object;
 
   if (metadata.appDisplayName) {
@@ -259,6 +269,10 @@ folly::dynamic hostMetadataToDynamic(const HostTargetMetadata& metadata) {
   }
   if (metadata.reactNativeVersion) {
     result["reactNativeVersion"] = metadata.reactNativeVersion.value();
+  }
+  if (staticMetadata.isProfilingBuild) {
+    result["unstable_isProfilingBuild"] =
+        staticMetadata.isProfilingBuild.value();
   }
 
   return result;

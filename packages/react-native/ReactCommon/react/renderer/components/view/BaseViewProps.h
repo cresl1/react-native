@@ -18,6 +18,7 @@
 #include <react/renderer/graphics/BoxShadow.h>
 #include <react/renderer/graphics/Color.h>
 #include <react/renderer/graphics/Filter.h>
+#include <react/renderer/graphics/Isolation.h>
 #include <react/renderer/graphics/Transform.h>
 
 #include <optional>
@@ -50,6 +51,12 @@ class BaseViewProps : public YogaStylableProps, public AccessibilityProps {
   CascadedBorderCurves borderCurves{}; // iOS only?
   CascadedBorderStyles borderStyles{};
 
+  // Outline
+  SharedColor outlineColor{};
+  Float outlineOffset{};
+  OutlineStyle outlineStyle{OutlineStyle::Solid};
+  Float outlineWidth{};
+
   // Shadow
   SharedColor shadowColor{};
   Size shadowOffset{0, -3};
@@ -64,11 +71,14 @@ class BaseViewProps : public YogaStylableProps, public AccessibilityProps {
   // Filter
   std::vector<FilterFunction> filter{};
 
-  // Gradient
-  std::vector<GradientValue> backgroundImage{};
+  // Background Image
+  std::vector<BackgroundImage> backgroundImage{};
 
   // MixBlendMode
-  BlendMode mixBlendMode;
+  BlendMode mixBlendMode{BlendMode::Normal};
+
+  // Isolate
+  Isolation isolation{Isolation::Auto};
 
   // Transform
   Transform transform{};

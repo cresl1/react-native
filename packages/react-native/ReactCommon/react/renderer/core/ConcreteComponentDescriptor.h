@@ -10,8 +10,8 @@
 #include <memory>
 #include <vector>
 
-#include <cxxreact/SystraceSection.h>
 #include <react/debug/react_native_assert.h>
+#include <react/featureflags/ReactNativeFeatureFlags.h>
 #include <react/renderer/core/ComponentDescriptor.h>
 #include <react/renderer/core/EventDispatcher.h>
 #include <react/renderer/core/Props.h>
@@ -20,7 +20,6 @@
 #include <react/renderer/core/ShadowNodeFragment.h>
 #include <react/renderer/core/State.h>
 #include <react/renderer/graphics/Float.h>
-#include <react/utils/CoreFeatures.h>
 
 namespace facebook::react {
 
@@ -67,7 +66,6 @@ class ConcreteComponentDescriptor : public ComponentDescriptor {
   std::shared_ptr<ShadowNode> createShadowNode(
       const ShadowNodeFragment& fragment,
       const ShadowNodeFamily::Shared& family) const override {
-    SystraceSection s("ConcreteComponentDescriptor::createShadowNode");
     auto shadowNode =
         std::make_shared<ShadowNodeT>(fragment, family, getTraits());
 
@@ -99,7 +97,6 @@ class ConcreteComponentDescriptor : public ComponentDescriptor {
       const PropsParserContext& context,
       const Props::Shared& props,
       RawProps rawProps) const override {
-    SystraceSection s1("ConcreteComponentDescriptor::cloneProps");
     // Optimization:
     // Quite often nodes are constructed with default/empty props: the base
     // `props` object is `null` (there no base because it's not cloning) and the
@@ -118,15 +115,13 @@ class ConcreteComponentDescriptor : public ComponentDescriptor {
     // Use the new-style iterator
     // Note that we just check if `Props` has this flag set, no matter
     // the type of ShadowNode; it acts as the single global flag.
-    if (CoreFeatures::enablePropIteratorSetter) {
+    if (ReactNativeFeatureFlags::enableCppPropsIteratorSetter()) {
       auto shadowNodeProps = ShadowNodeT::Props(context, rawProps, props);
 #ifdef ANDROID
       const auto& dynamic = shadowNodeProps->rawProps;
 #else
       const auto& dynamic = static_cast<folly::dynamic>(rawProps);
 #endif
-      SystraceSection s2(
-          "ConcreteComponentDescriptor::cloneProps - iterateOverValues");
       for (const auto& pair : dynamic.items()) {
         const auto& name = pair.first.getString();
         shadowNodeProps->setProp(
@@ -137,8 +132,6 @@ class ConcreteComponentDescriptor : public ComponentDescriptor {
       }
       return shadowNodeProps;
     } else {
-      SystraceSection s3(
-          "ConcreteComponentDescriptor::cloneProps - old-style constructor");
       // Call old-style constructor
       return ShadowNodeT::Props(context, rawProps, props);
     }
@@ -176,7 +169,8 @@ class ConcreteComponentDescriptor : public ComponentDescriptor {
   ShadowNodeFamily::Shared createFamily(
       const ShadowNodeFamilyFragment& fragment) const override {
     auto eventEmitter = std::make_shared<const ConcreteEventEmitter>(
-        std::make_shared<EventTarget>(fragment.instanceHandle),
+        std::make_shared<EventTarget>(
+            fragment.instanceHandle, fragment.surfaceId),
         eventDispatcher_);
     return std::make_shared<ShadowNodeFamily>(
         fragment, std::move(eventEmitter), eventDispatcher_, *this);
@@ -189,5 +183,18 @@ class ConcreteComponentDescriptor : public ComponentDescriptor {
         shadowNode.getComponentHandle() == getComponentHandle());
   }
 };
+
+template <typename TManager>
+std::shared_ptr<TManager> getManagerByName(
+    std::shared_ptr<const ContextContainer>& contextContainer,
+    const char name[]) {
+  if (contextContainer) {
+    if (auto manager = contextContainer->find<std::shared_ptr<TManager>>(name);
+        manager.has_value()) {
+      return manager.value();
+    }
+  }
+  return std::make_shared<TManager>(contextContainer);
+}
 
 } // namespace facebook::react

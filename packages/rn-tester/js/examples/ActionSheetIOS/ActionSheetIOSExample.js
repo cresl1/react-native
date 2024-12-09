@@ -155,6 +155,50 @@ class ActionSheetCancelButtonTintExample extends React.Component<
   };
 }
 
+class ActionSheetDisabledButtonTintExample extends React.Component<
+  $FlowFixMeProps,
+  $FlowFixMeState,
+> {
+  state: any | {clicked: string} = {
+    clicked: 'none',
+  };
+
+  render(): React.Node {
+    return (
+      <RNTesterThemeContext.Consumer>
+        {theme => (
+          <View>
+            <Text
+              onPress={this.showActionSheet}
+              style={[style.button, {color: theme.SecondaryLabelColor}]}>
+              Click to show the ActionSheet
+            </Text>
+            <Text style={{color: theme.SecondaryLabelColor}}>
+              Clicked button: {this.state.clicked}
+            </Text>
+          </View>
+        )}
+      </RNTesterThemeContext.Consumer>
+    );
+  }
+
+  showActionSheet = () => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: BUTTONS,
+        cancelButtonIndex: CANCEL_INDEX,
+        destructiveButtonIndex: DESTRUCTIVE_INDEX,
+        disabledButtonIndices: DISABLED_BUTTON_INDICES,
+        tintColor: 'black',
+        disabledButtonTintColor: 'gray',
+      },
+      buttonIndex => {
+        this.setState({clicked: BUTTONS[buttonIndex]});
+      },
+    );
+  };
+}
+
 class ActionSheetAnchorExample extends React.Component<
   $FlowFixMeProps,
   $FlowFixMeState,
@@ -464,61 +508,67 @@ exports.description = "Interface to show iOS' action sheets";
 exports.examples = [
   {
     title: 'Show Action Sheet',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ActionSheetExample />;
     },
   },
   {
     title: 'Show Action Sheet with tinted buttons',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ActionSheetTintExample />;
     },
   },
   {
     title: 'Show Action Sheet with cancel tinted button',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ActionSheetCancelButtonTintExample />;
     },
   },
   {
+    title: 'Show Action Sheet with disabled tinted button',
+    render(): React.MixedElement {
+      return <ActionSheetDisabledButtonTintExample />;
+    },
+  },
+  {
     title: 'Show Action Sheet with anchor',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ActionSheetAnchorExample />;
     },
   },
   {
     title: 'Show Action Sheet with disabled buttons',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ActionSheetDisabledExample />;
     },
   },
   {
     title: 'Show Action Sheet and automatically dismiss it',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ActionSheetDismissExample />;
     },
   },
   {
     title: 'Show Share Action Sheet',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ShareActionSheetExample url="https://code.facebook.com" />;
     },
   },
   {
     title: 'Share Local Image',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ShareActionSheetExample url="bunny.png" />;
     },
   },
   {
     title: 'Share Screenshot',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ShareScreenshotExample />;
     },
   },
   {
     title: 'Share from Anchor',
-    render(): React.Element<any> {
+    render(): React.MixedElement {
       return <ShareScreenshotAnchorExample />;
     },
   },

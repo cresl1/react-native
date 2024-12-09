@@ -60,14 +60,14 @@ jobs:
       HERMES_WS_DIR: /tmp/hermes
       HERMES_TARBALL_ARTIFACTS_DIR: /tmp/hermes/hermes-runtime-darwin
       HERMES_OSXBIN_ARTIFACTS_DIR: /tmp/hermes/osx-bin
-      IOS_DEPLOYMENT_TARGET: "13.4"
+      IOS_DEPLOYMENT_TARGET: "15.1"
       XROS_DEPLOYMENT_TARGET: "1.0"
       MAC_DEPLOYMENT_TARGET: "10.15"
     strategy:
       fail-fast: false
       matrix:
         flavor: [Debug, Release]
-        slice: [macosx, iphoneos, iphonesimulator, catalyst, xros, xrsimulator]
+        slice: [macosx, iphoneos, iphonesimulator, appletvos, appletvsimulator, catalyst, xros, xrsimulator]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

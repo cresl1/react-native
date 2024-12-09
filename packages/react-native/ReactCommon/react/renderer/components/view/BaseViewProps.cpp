@@ -9,6 +9,7 @@
 
 #include <algorithm>
 
+#include <react/featureflags/ReactNativeFeatureFlags.h>
 #include <react/renderer/components/view/conversions.h>
 #include <react/renderer/components/view/primitives.h>
 #include <react/renderer/components/view/propsConversions.h>
@@ -16,7 +17,6 @@
 #include <react/renderer/core/propsConversions.h>
 #include <react/renderer/debug/debugStringConvertibleUtils.h>
 #include <react/renderer/graphics/ValueUnit.h>
-#include <react/utils/CoreFeatures.h>
 
 namespace facebook::react {
 
@@ -57,15 +57,16 @@ BaseViewProps::BaseViewProps(
     : YogaStylableProps(context, sourceProps, rawProps),
       AccessibilityProps(context, sourceProps, rawProps),
       opacity(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.opacity
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "opacity",
-                                                       sourceProps.opacity,
-                                                       (Float)1.0)),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.opacity
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "opacity",
+                    sourceProps.opacity,
+                    (Float)1.0)),
       backgroundColor(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.backgroundColor
               : convertRawProp(
                     context,
@@ -74,59 +75,101 @@ BaseViewProps::BaseViewProps(
                     sourceProps.backgroundColor,
                     {})),
       borderRadii(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.borderRadii
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "border",
-                                                       "Radius",
-                                                       sourceProps.borderRadii,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.borderRadii
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "border",
+                    "Radius",
+                    sourceProps.borderRadii,
+                    {})),
       borderColors(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.borderColors
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "border",
-                                                       "Color",
-                                                       sourceProps.borderColors,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.borderColors
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "border",
+                    "Color",
+                    sourceProps.borderColors,
+                    {})),
       borderCurves(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.borderCurves
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "border",
-                                                       "Curve",
-                                                       sourceProps.borderCurves,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.borderCurves
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "border",
+                    "Curve",
+                    sourceProps.borderCurves,
+                    {})),
       borderStyles(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.borderStyles
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "border",
-                                                       "Style",
-                                                       sourceProps.borderStyles,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.borderStyles
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "border",
+                    "Style",
+                    sourceProps.borderStyles,
+                    {})),
+      outlineColor(
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.outlineColor
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "outlineColor",
+                    sourceProps.outlineColor,
+                    {})),
+      outlineOffset(
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.outlineOffset
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "outlineOffset",
+                    sourceProps.outlineOffset,
+                    {})),
+      outlineStyle(
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.outlineStyle
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "outlineStyle",
+                    sourceProps.outlineStyle,
+                    {})),
+      outlineWidth(
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.outlineWidth
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "outlineWidth",
+                    sourceProps.outlineWidth,
+                    {})),
       shadowColor(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.shadowColor
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "shadowColor",
-                                                       sourceProps.shadowColor,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.shadowColor
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "shadowColor",
+                    sourceProps.shadowColor,
+                    {})),
       shadowOffset(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.shadowOffset
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "shadowOffset",
-                                                       sourceProps.shadowOffset,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.shadowOffset
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "shadowOffset",
+                    sourceProps.shadowOffset,
+                    {})),
       shadowOpacity(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.shadowOpacity
               : convertRawProp(
                     context,
@@ -135,39 +178,43 @@ BaseViewProps::BaseViewProps(
                     sourceProps.shadowOpacity,
                     {})),
       shadowRadius(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.shadowRadius
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "shadowRadius",
-                                                       sourceProps.shadowRadius,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.shadowRadius
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "shadowRadius",
+                    sourceProps.shadowRadius,
+                    {})),
       cursor(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.cursor
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "cursor",
-                                                       sourceProps.cursor,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.cursor
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "cursor",
+                    sourceProps.cursor,
+                    {})),
       boxShadow(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.boxShadow
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "experimental_boxShadow",
-                                                       sourceProps.boxShadow,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.boxShadow
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "boxShadow",
+                    sourceProps.boxShadow,
+                    {})),
       filter(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.filter
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "experimental_filter",
-                                                       sourceProps.filter,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.filter
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "filter",
+                    sourceProps.filter,
+                    {})),
       backgroundImage(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.backgroundImage
               : convertRawProp(
                     context,
@@ -176,24 +223,34 @@ BaseViewProps::BaseViewProps(
                     sourceProps.backgroundImage,
                     {})),
       mixBlendMode(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.mixBlendMode
               : convertRawProp(
                     context,
                     rawProps,
-                    "experimental_mixBlendMode",
+                    "mixBlendMode",
                     sourceProps.mixBlendMode,
                     {})),
+      isolation(
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.isolation
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "isolation",
+                    sourceProps.isolation,
+                    {})),
       transform(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.transform
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "transform",
-                                                       sourceProps.transform,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.transform
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "transform",
+                    sourceProps.transform,
+                    {})),
       transformOrigin(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.transformOrigin
               : convertRawProp(
                     context,
@@ -202,7 +259,7 @@ BaseViewProps::BaseViewProps(
                     sourceProps.transformOrigin,
                     {})),
       backfaceVisibility(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.backfaceVisibility
               : convertRawProp(
                     context,
@@ -211,7 +268,7 @@ BaseViewProps::BaseViewProps(
                     sourceProps.backfaceVisibility,
                     {})),
       shouldRasterize(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.shouldRasterize
               : convertRawProp(
                     context,
@@ -220,15 +277,16 @@ BaseViewProps::BaseViewProps(
                     sourceProps.shouldRasterize,
                     {})),
       zIndex(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.zIndex
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "zIndex",
-                                                       sourceProps.zIndex,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.zIndex
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "zIndex",
+                    sourceProps.zIndex,
+                    {})),
       pointerEvents(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.pointerEvents
               : convertRawProp(
                     context,
@@ -237,35 +295,38 @@ BaseViewProps::BaseViewProps(
                     sourceProps.pointerEvents,
                     {})),
       hitSlop(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.hitSlop
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "hitSlop",
-                                                       sourceProps.hitSlop,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.hitSlop
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "hitSlop",
+                    sourceProps.hitSlop,
+                    {})),
       onLayout(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.onLayout
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "onLayout",
-                                                       sourceProps.onLayout,
-                                                       {})),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.onLayout
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "onLayout",
+                    sourceProps.onLayout,
+                    {})),
       events(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.events
               : convertRawProp(context, rawProps, sourceProps.events, {})),
       collapsable(
-          CoreFeatures::enablePropIteratorSetter ? sourceProps.collapsable
-                                                 : convertRawProp(
-                                                       context,
-                                                       rawProps,
-                                                       "collapsable",
-                                                       sourceProps.collapsable,
-                                                       true)),
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
+              ? sourceProps.collapsable
+              : convertRawProp(
+                    context,
+                    rawProps,
+                    "collapsable",
+                    sourceProps.collapsable,
+                    true)),
       collapsableChildren(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.collapsableChildren
               : convertRawProp(
                     context,
@@ -274,7 +335,7 @@ BaseViewProps::BaseViewProps(
                     sourceProps.collapsableChildren,
                     true)),
       removeClippedSubviews(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.removeClippedSubviews
               : convertRawProp(
                     context,
@@ -283,7 +344,7 @@ BaseViewProps::BaseViewProps(
                     sourceProps.removeClippedSubviews,
                     false)),
       experimental_layoutConformance(
-          CoreFeatures::enablePropIteratorSetter
+          ReactNativeFeatureFlags::enableCppPropsIteratorSetter()
               ? sourceProps.experimental_layoutConformance
               : convertRawProp(
                     context,
@@ -330,6 +391,7 @@ void BaseViewProps::setProp(
     RAW_SET_PROP_SWITCH_CASE_BASIC(shouldRasterize);
     RAW_SET_PROP_SWITCH_CASE_BASIC(zIndex);
     RAW_SET_PROP_SWITCH_CASE_BASIC(pointerEvents);
+    RAW_SET_PROP_SWITCH_CASE_BASIC(isolation);
     RAW_SET_PROP_SWITCH_CASE_BASIC(hitSlop);
     RAW_SET_PROP_SWITCH_CASE_BASIC(onLayout);
     RAW_SET_PROP_SWITCH_CASE_BASIC(collapsable);
@@ -337,6 +399,13 @@ void BaseViewProps::setProp(
     RAW_SET_PROP_SWITCH_CASE_BASIC(removeClippedSubviews);
     RAW_SET_PROP_SWITCH_CASE_BASIC(experimental_layoutConformance);
     RAW_SET_PROP_SWITCH_CASE_BASIC(cursor);
+    RAW_SET_PROP_SWITCH_CASE_BASIC(outlineColor);
+    RAW_SET_PROP_SWITCH_CASE_BASIC(outlineOffset);
+    RAW_SET_PROP_SWITCH_CASE_BASIC(outlineStyle);
+    RAW_SET_PROP_SWITCH_CASE_BASIC(outlineWidth);
+    RAW_SET_PROP_SWITCH_CASE_BASIC(filter);
+    RAW_SET_PROP_SWITCH_CASE_BASIC(boxShadow);
+    RAW_SET_PROP_SWITCH_CASE_BASIC(mixBlendMode);
     // events field
     VIEW_EVENT_CASE(PointerEnter);
     VIEW_EVENT_CASE(PointerEnterCapture);
@@ -378,37 +447,52 @@ static BorderRadii ensureNoOverlap(const BorderRadii& radii, const Size& size) {
   // the used values of all border radii until none of them overlap."
   // Source: https://www.w3.org/TR/css-backgrounds-3/#corner-overlap
 
-  auto insets = EdgeInsets{
-      /* .left = */ radii.topLeft + radii.bottomLeft,
-      /* .top = */ radii.topLeft + radii.topRight,
-      /* .right = */ radii.topRight + radii.bottomRight,
-      /* .bottom = */ radii.bottomLeft + radii.bottomRight,
-  };
+  float leftEdgeRadii = radii.topLeft.vertical + radii.bottomLeft.vertical;
+  float topEdgeRadii = radii.topLeft.horizontal + radii.topRight.horizontal;
+  float rightEdgeRadii = radii.topRight.vertical + radii.bottomRight.vertical;
+  float bottomEdgeRadii =
+      radii.bottomLeft.horizontal + radii.bottomRight.horizontal;
 
-  auto insetsScale = EdgeInsets{
-      /* .left = */
-      insets.left > 0 ? std::min((Float)1.0, size.height / insets.left) : 0,
-      /* .top = */
-      insets.top > 0 ? std::min((Float)1.0, size.width / insets.top) : 0,
-      /* .right = */
-      insets.right > 0 ? std::min((Float)1.0, size.height / insets.right) : 0,
-      /* .bottom = */
-      insets.bottom > 0 ? std::min((Float)1.0, size.width / insets.bottom) : 0,
-  };
+  float leftEdgeRadiiScale =
+      (leftEdgeRadii > 0) ? std::min(size.height / leftEdgeRadii, (Float)1) : 0;
+  float topEdgeRadiiScale =
+      (topEdgeRadii > 0) ? std::min(size.width / topEdgeRadii, (Float)1) : 0;
+  float rightEdgeRadiiScale = (rightEdgeRadii > 0)
+      ? std::min(size.height / rightEdgeRadii, (Float)1)
+      : 0;
+  float bottomEdgeRadiiScale = (bottomEdgeRadii > 0)
+      ? std::min(size.width / bottomEdgeRadii, (Float)1)
+      : 0;
 
   return BorderRadii{
-      /* topLeft = */
-      static_cast<float>(
-          radii.topLeft * std::min(insetsScale.top, insetsScale.left)),
-      /* topRight = */
-      static_cast<float>(
-          radii.topRight * std::min(insetsScale.top, insetsScale.right)),
-      /* bottomLeft = */
-      static_cast<float>(
-          radii.bottomLeft * std::min(insetsScale.bottom, insetsScale.left)),
-      /* bottomRight = */
-      static_cast<float>(
-          radii.bottomRight * std::min(insetsScale.bottom, insetsScale.right)),
+      .topLeft =
+          {static_cast<float>(
+               radii.topLeft.vertical *
+               std::min(topEdgeRadiiScale, leftEdgeRadiiScale)),
+           static_cast<float>(
+               radii.topLeft.horizontal *
+               std::min(topEdgeRadiiScale, leftEdgeRadiiScale))},
+      .topRight =
+          {static_cast<float>(
+               radii.topRight.vertical *
+               std::min(topEdgeRadiiScale, rightEdgeRadiiScale)),
+           static_cast<float>(
+               radii.topRight.horizontal *
+               std::min(topEdgeRadiiScale, rightEdgeRadiiScale))},
+      .bottomLeft =
+          {static_cast<float>(
+               radii.bottomLeft.vertical *
+               std::min(bottomEdgeRadiiScale, leftEdgeRadiiScale)),
+           static_cast<float>(
+               radii.bottomLeft.horizontal *
+               std::min(bottomEdgeRadiiScale, leftEdgeRadiiScale))},
+      .bottomRight =
+          {static_cast<float>(
+               radii.bottomRight.vertical *
+               std::min(bottomEdgeRadiiScale, rightEdgeRadiiScale)),
+           static_cast<float>(
+               radii.bottomRight.horizontal *
+               std::min(bottomEdgeRadiiScale, rightEdgeRadiiScale))},
   };
 }
 
@@ -416,52 +500,35 @@ static BorderRadii radiiPercentToPoint(
     const RectangleCorners<ValueUnit>& radii,
     const Size& size) {
   return BorderRadii{
-      /* topLeft = */
-      (radii.topLeft.unit == UnitType::Percent)
-          ? static_cast<float>(
-                (radii.topLeft.value / 100) * std::max(size.width, size.height))
-          : static_cast<float>(radii.topLeft.value),
-      /* topRight = */
-      (radii.topRight.unit == UnitType::Percent)
-          ? static_cast<float>(
-                (radii.topRight.value / 100) *
-                std::max(size.width, size.height))
-          : static_cast<float>(radii.topRight.value),
-      /* bottomLeft = */
-      (radii.bottomLeft.unit == UnitType::Percent)
-          ? static_cast<float>(
-                (radii.bottomLeft.value / 100) *
-                std::max(size.width, size.height))
-          : static_cast<float>(radii.bottomLeft.value),
-      /* bottomRight = */
-      (radii.bottomRight.unit == UnitType::Percent)
-          ? static_cast<float>(
-                (radii.bottomRight.value / 100) *
-                std::max(size.width, size.height))
-          : static_cast<float>(radii.bottomRight.value),
+      .topLeft =
+          {radii.topLeft.resolve(size.height),
+           radii.topLeft.resolve(size.width)},
+      .topRight =
+          {radii.topRight.resolve(size.height),
+           radii.topRight.resolve(size.width)},
+      .bottomLeft =
+          {radii.bottomLeft.resolve(size.height),
+           radii.bottomLeft.resolve(size.width)},
+      .bottomRight =
+          {radii.bottomRight.resolve(size.height),
+           radii.bottomRight.resolve(size.width)},
   };
 }
 
 CascadedBorderWidths BaseViewProps::getBorderWidths() const {
   return CascadedBorderWidths{
-      /* .left = */ optionalFloatFromYogaValue(
-          yogaStyle.border(yoga::Edge::Left)),
-      /* .top = */
-      optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Top)),
-      /* .right = */
-      optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Right)),
-      /* .bottom = */
-      optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Bottom)),
-      /* .start = */
-      optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Start)),
-      /* .end = */
-      optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::End)),
-      /* .horizontal = */
-      optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Horizontal)),
-      /* .vertical = */
-      optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Vertical)),
-      /* .all = */
-      optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::All)),
+      .left = optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Left)),
+      .top = optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Top)),
+      .right = optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Right)),
+      .bottom =
+          optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Bottom)),
+      .start = optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Start)),
+      .end = optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::End)),
+      .horizontal =
+          optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Horizontal)),
+      .vertical =
+          optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::Vertical)),
+      .all = optionalFloatFromYogaValue(yogaStyle.border(yoga::Edge::All)),
   };
 }
 
@@ -477,13 +544,11 @@ BorderMetrics BaseViewProps::resolveBorderMetrics(
       layoutMetrics.frame.size);
 
   return {
-      /* .borderColors = */ borderColors.resolve(isRTL, {}),
-      /* .borderWidths = */ borderWidths.resolve(isRTL, 0),
-      /* .borderRadii = */
-      ensureNoOverlap(radii, layoutMetrics.frame.size),
-      /* .borderCurves = */
-      borderCurves.resolve(isRTL, BorderCurve::Circular),
-      /* .borderStyles = */ borderStyles.resolve(isRTL, BorderStyle::Solid),
+      .borderColors = borderColors.resolve(isRTL, {}),
+      .borderWidths = borderWidths.resolve(isRTL, 0),
+      .borderRadii = ensureNoOverlap(radii, layoutMetrics.frame.size),
+      .borderCurves = borderCurves.resolve(isRTL, BorderCurve::Circular),
+      .borderStyles = borderStyles.resolve(isRTL, BorderStyle::Solid),
   };
 }
 

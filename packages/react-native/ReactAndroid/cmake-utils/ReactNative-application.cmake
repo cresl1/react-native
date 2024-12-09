@@ -31,12 +31,16 @@ if(CCACHE_FOUND)
 endif(CCACHE_FOUND)
 
 set(BUILD_DIR ${PROJECT_BUILD_DIR})
-if(CMAKE_HOST_WIN32)
-        string(REPLACE "\\" "/" BUILD_DIR ${BUILD_DIR})
-endif()
+file(TO_CMAKE_PATH "${BUILD_DIR}" BUILD_DIR)
+file(TO_CMAKE_PATH "${REACT_ANDROID_DIR}" REACT_ANDROID_DIR)
+
+if (PROJECT_ROOT_DIR)
+# This empty `if` is just to silence a CMake warning and make sure the `PROJECT_ROOT_DIR`
+# variable is defined if user need to access it.
+endif ()
 
 file(GLOB input_SRC CONFIGURE_DEPENDS
-        *.cpp
+        ${REACT_ANDROID_DIR}/cmake-utils/default-app-setup/*.cpp
         ${BUILD_DIR}/generated/autolinking/src/main/jni/*.cpp)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED ${input_SRC})
@@ -64,28 +68,16 @@ target_compile_options(${CMAKE_PROJECT_NAME}
 
 # Prefab packages from React Native
 find_package(ReactAndroid REQUIRED CONFIG)
-add_library(fabricjni ALIAS ReactAndroid::fabricjni)
 add_library(jsi ALIAS ReactAndroid::jsi)
-add_library(mapbufferjni ALIAS ReactAndroid::mapbufferjni)
-add_library(react_render_mapbuffer ALIAS ReactAndroid::react_render_mapbuffer)
-add_library(react_render_textlayoutmanager ALIAS ReactAndroid::react_render_textlayoutmanager)
-add_library(react_newarchdefaults ALIAS ReactAndroid::react_newarchdefaults)
 add_library(reactnative ALIAS ReactAndroid::reactnative)
-add_library(turbomodulejsijni ALIAS ReactAndroid::turbomodulejsijni)
-add_library(yoga ALIAS ReactAndroid::yoga)
 
 find_package(fbjni REQUIRED CONFIG)
 add_library(fbjni ALIAS fbjni::fbjni)
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
-        fabricjni                           # prefab ready
-        mapbufferjni                        # prefab ready
         fbjni                               # via 3rd party prefab
         jsi                                 # prefab ready
-        react_newarchdefaults               # prefab ready
         reactnative                         # prefab ready
-        turbomodulejsijni                   # prefab ready
-        yoga                                # prefab ready
 )
 
 # We use an interface target to propagate flags to all the generated targets
@@ -120,3 +112,7 @@ if(EXISTS ${PROJECT_BUILD_DIR}/generated/source/codegen/jni/CMakeLists.txt)
                 -DREACT_NATIVE_APP_MODULE_PROVIDER=${APP_CODEGEN_HEADER}_ModuleProvider
         )
 endif()
+
+# We set REACTNATIVE_MERGED_SO so libraries/apps can selectively decide to depend on either libreactnative.so
+# or link against a old prefab target (this is needed for React Native 0.76 on).
+set(REACTNATIVE_MERGED_SO true)

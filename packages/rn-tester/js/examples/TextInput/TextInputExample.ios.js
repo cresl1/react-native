@@ -27,6 +27,7 @@ const {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } = require('react-native');
 
@@ -263,6 +264,31 @@ class AutogrowingTextInputExample extends React.Component<
   }
 }
 
+const TextInputWithFocusButton = () => {
+  const inputToFocusRef = React.useRef<React.ElementRef<
+    typeof TextInput,
+  > | null>(null);
+  return (
+    <View>
+      <ExampleTextInput
+        ref={inputToFocusRef}
+        placeholder="height increases with content"
+        defaultValue="React Native enables you to build world-class application experiences on native platforms using a consistent developer experience based on JavaScript and React. The focus of React Native is on developer efficiency across all the platforms you care about - learn once, write anywhere. Facebook uses React Native in multiple production apps and will continue investing in React Native."
+        multiline={true}
+        enablesReturnKeyAutomatically={true}
+        returnKeyType="go"
+        style={[styles.multiline, styles.multilineExpandable]}
+      />
+      <Button
+        title="Focus"
+        onPress={() => {
+          inputToFocusRef.current?.focus();
+        }}
+      />
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   multiline: {
     height: 50,
@@ -347,6 +373,27 @@ const textInputExamples: Array<RNTesterModuleExample> = [
         );
       });
       return <View>{examples}</View>;
+    },
+  },
+  {
+    title: 'Custom Input Accessory View Button Label',
+    render: function (): React.Node {
+      return (
+        <View>
+          <WithLabel label="Localized Label">
+            <ExampleTextInput
+              keyboardType="number-pad"
+              inputAccessoryViewButtonLabel="Presiona aquí para terminar"
+            />
+          </WithLabel>
+          <WithLabel label="Custom Label">
+            <ExampleTextInput
+              keyboardType="ascii-capable-number-pad"
+              inputAccessoryViewButtonLabel="Press here to finish"
+            />
+          </WithLabel>
+        </View>
+      );
     },
   },
   {
@@ -783,6 +830,15 @@ const textInputExamples: Array<RNTesterModuleExample> = [
           <WithLabel label="birthdate">
             <ExampleTextInput textContentType="birthdate" />
           </WithLabel>
+          <WithLabel label="dateTime">
+            <ExampleTextInput textContentType="dateTime" />
+          </WithLabel>
+          <WithLabel label="flightNumber">
+            <ExampleTextInput textContentType="flightNumber" />
+          </WithLabel>
+          <WithLabel label="shipmentTrackingNumber">
+            <ExampleTextInput textContentType="shipmentTrackingNumber" />
+          </WithLabel>
         </View>
       );
     },
@@ -861,6 +917,54 @@ const textInputExamples: Array<RNTesterModuleExample> = [
               defaultValue="CopyAndPaste"
             />
           </WithLabel>
+        </View>
+      );
+    },
+  },
+  {
+    title: 'Auto scroll cursor into view when focusing',
+    render: function (): React.Node {
+      return <TextInputWithFocusButton />;
+    },
+  },
+  {
+    title: 'Line Break Mode',
+    render: function (): React.Node {
+      const lineBreakMode = [
+        'wordWrapping',
+        'char',
+        'clip',
+        'head',
+        'middle',
+        'tail',
+      ];
+      const textByCode = {
+        en: 'verylongtext-dummydummydummydummydummydummydummydummydummydummydummydummy',
+        ko: '한글개행한글개행-한글개행한글개행한글개행한글개행한글개행한글개행한글개행한글개행한글개행한글개행',
+      };
+      return (
+        <View>
+          {lineBreakMode.map(strategy => {
+            return (
+              <View key={strategy} style={{marginBottom: 12}}>
+                <Text
+                  style={{
+                    backgroundColor: 'lightgrey',
+                  }}>{`Mode: ${strategy}`}</Text>
+                {Object.keys(textByCode).map(code => {
+                  return (
+                    <View key={code}>
+                      <Text style={{fontWeight: 'bold'}}>{`[${code}]`}</Text>
+                      <ExampleTextInput
+                        lineBreakModeIOS={strategy}
+                        defaultValue={textByCode[code]}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
         </View>
       );
     },
